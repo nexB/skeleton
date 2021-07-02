@@ -21,6 +21,7 @@
 /share/
 /tcl/
 /.eggs/
+/etc/thirdparty/
 
 # Installer logs
 pip-log.txt

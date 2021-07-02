@@ -28,10 +28,10 @@ set "REQUIREMENTS=--editable ."
 set "DEV_REQUIREMENTS=--editable .[testing]"
 
 @rem # where we create a virtualenv
-set "VIRTUALENV_DIR=tmp"
+set "VIRTUALENV_DIR=."
 
 @rem # Cleanable files and directories to delete with the --clean option
-set "CLEANABLE=build tmp"
+set "CLEANABLE=build tmp bin Lib Scripts pyvenv.cfg etc\thirdparty\virtualenv.pyz"
 
 @rem # extra  arguments passed to pip
 set "PIP_EXTRA_ARGS= "
@@ -90,37 +90,39 @@ if not defined PYTHON_EXECUTABLE (
 @rem # presence is not consistent across Linux distro and sometimes pip is not
 @rem # included either by default. The virtualenv.pyz app cures all these issues.
 
-if not exist ""%CFG_BIN_DIR%\python.exe"" (
+if not exist "%CFG_BIN_DIR%\python.exe" (
     if not exist "%CFG_BIN_DIR%" (
         mkdir %CFG_BIN_DIR%
     )
 
-    if exist ""%CFG_ROOT_DIR%\etc\thirdparty\virtualenv.pyz"" (
-        %PYTHON_EXECUTABLE% "%CFG_ROOT_DIR%\etc\thirdparty\virtualenv.pyz" ^
-            --wheel embed --pip embed --setuptools embed ^
-            --seeder pip ^
-            --never-download ^
-            --no-periodic-update ^
-            --no-vcs-ignore ^
-            %CFG_QUIET% ^
-            %CFG_ROOT_DIR%\%VIRTUALENV_DIR%
-    ) else (
-        if not exist ""%CFG_ROOT_DIR%\%VIRTUALENV_DIR%\virtualenv.pyz"" (
-            curl -o "%CFG_ROOT_DIR%\%VIRTUALENV_DIR%\virtualenv.pyz" %VIRTUALENV_PYZ_URL%
-
-            if %ERRORLEVEL% neq 0 (
-                exit /b %ERRORLEVEL%
+    if not exist "%CFG_ROOT_DIR%\etc\thirdparty\virtualenv.pyz" (
+        @rem # Check if curl or wget is installed
+        where curl >nul 2>nul
+        if %ERRORLEVEL% == 0 (
+            curl -o "%CFG_ROOT_DIR%\etc\thirdparty\virtualenv.pyz" %VIRTUALENV_PYZ_URL%
+        ) else (
+            where wget >nul 2>nul
+            if %ERRORLEVEL% == 0 (
+                wget -O "%CFG_ROOT_DIR%\etc\thirdparty\virtualenv.pyz" %VIRTUALENV_PYZ_URL%
+            ) else (
+                echo "Could not find curl or wget, please install one."
+                exit /b
             )
         )
-        %PYTHON_EXECUTABLE% "%CFG_ROOT_DIR%\%VIRTUALENV_DIR%\virtualenv.pyz" ^
-            --wheel embed --pip embed --setuptools embed ^
-            --seeder pip ^
-            --never-download ^
-            --no-periodic-update ^
-            --no-vcs-ignore ^
-            %CFG_QUIET% ^
-            %CFG_ROOT_DIR%\%VIRTUALENV_DIR%
+
+        if %ERRORLEVEL% neq 0 (
+            exit /b %ERRORLEVEL%
+        )
     )
+
+    %PYTHON_EXECUTABLE% "%CFG_ROOT_DIR%\etc\thirdparty\virtualenv.pyz" ^
+        --wheel embed --pip embed --setuptools embed ^
+        --seeder pip ^
+        --never-download ^
+        --no-periodic-update ^
+        --no-vcs-ignore ^
+        %CFG_QUIET% ^
+        %CFG_ROOT_DIR%\%VIRTUALENV_DIR%
 )
 
 if %ERRORLEVEL% neq 0 (
@@ -142,7 +144,11 @@ if %ERRORLEVEL% neq 0 (
     %PIP_EXTRA_ARGS% ^
     %CFG_REQUIREMENTS%
 
+
 @rem # Create junction to bin to have the same directory between linux and windows
+if exist ""%CFG_ROOT_DIR%\%VIRTUALENV_DIR%\bin"" (
+    rmdir /s /q "%CFG_ROOT_DIR%\%VIRTUALENV_DIR%\bin"
+    )
 mklink /J %CFG_ROOT_DIR%\%VIRTUALENV_DIR%\bin %CFG_ROOT_DIR%\%VIRTUALENV_DIR%\Scripts
 
 if %ERRORLEVEL% neq 0 (

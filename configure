@@ -30,12 +30,17 @@ REQUIREMENTS="--editable ."
 DEV_REQUIREMENTS="--editable .[testing]"
 
 # where we create a virtualenv
-VIRTUALENV_DIR=tmp
+VIRTUALENV_DIR=.
 
 # Cleanable files and directories with the --clean option
 CLEANABLE="
     build
-	tmp"
+	tmp
+	bin
+	Lib
+	Scripts
+	pyvenv.cfg
+	etc/thirdparty/virtualenv.pyz"
 
 # extra  arguments passed to pip
 PIP_EXTRA_ARGS=" "
@@ -115,12 +120,16 @@ create_virtualenv() {
     if [ ! -f "$CFG_BIN_DIR/python" ]; then
 
         mkdir -p "$CFG_ROOT_DIR/$VENV_DIR"
+        VIRTUALENV_PYZ="$CFG_ROOT_DIR/etc/thirdparty/virtualenv.pyz"
 
-        if [ -f "$CFG_ROOT_DIR/etc/thirdparty/virtualenv.pyz" ]; then
-            VIRTUALENV_PYZ="$CFG_ROOT_DIR/etc/thirdparty/virtualenv.pyz"
-        else
-            VIRTUALENV_PYZ="$CFG_ROOT_DIR/$VENV_DIR/virtualenv.pyz"
-            wget -O "$VIRTUALENV_PYZ" "$VIRTUALENV_PYZ_URL"
+        if [ ! -f VIRTUALENV_PYZ ]; then
+            if [ -x "$(which wget)" ] ; then
+                wget -O "$VIRTUALENV_PYZ" "$VIRTUALENV_PYZ_URL"
+            elif [ -x "$(which curl)" ]; then
+                curl -o "$VIRTUALENV_PYZ" "$VIRTUALENV_PYZ_URL"
+            else
+                echo "Could not find curl or wget, please install one." >&2
+            fi
         fi
 
         $PYTHON_EXECUTABLE "$VIRTUALENV_PYZ" \
